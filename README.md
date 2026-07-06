@@ -1,96 +1,63 @@
-<!-- hide -->
-# Building and Securing a Network with a DMZ
+Construyendo y Asegurando una Red con una Zona Desmilitarizada (DMZ)
 
-> By [@vanemorocho](https://github.com/vanemorocho) and [other contributors](https://github.com/breatheco-de/commands-for-remote-hacking/graphs/contributors) at [4Geeks Academy](https://4geeksacademy.co/)
+Laboratorio de Seguridad en Redes · Cisco Packet Tracer · 4Geeks Academy
+Estudiante: Raúl Velásquez · 
 
-*These instructions [are available in 🇪🇸 Spanish](https://github.com/4GeeksAcademy/installing-windows-on-virtual-machine/blob/main/README.es.md) :es:*
-<!-- endhide -->
+Descripción
 
-This lab is designed for students to acquire fundamental skills in defensive cybersecurity by configuring a Demilitarized Zone (DMZ) in Cisco Packet Tracer. The objectives are:
+Implementación de una arquitectura de red segmentada con una Zona Desmilitarizada (DMZ) en Cisco Packet Tracer, aplicando principios de ciberseguridad defensiva: aislamiento de servicios críticos, exposición controlada mediante NAT, y control de tráfico entre zonas con Listas de Control de Acceso (ACLs).
 
-- Isolate critical services (DMZ)
-- Control traffic using ACLs
-- Expose web services in a controlled manner
-- Secure NAT configuration
+Objetivos
 
-### ⚠️ Important Note for Students
-This exercise is structured step by step to help you understand how to correctly and securely configure and protect a network with a DMZ. **It is very important that you follow the provided instructions precisely,** especially the IP addressing plan and the indicated commands.
 
-   > Using other IPs or changing the configuration order may break connectivity, prevent NAT from working, or invalidate the ACLs.
+Aislar servicios críticos en una DMZ separada de la red interna (LAN)
+Configurar NAT estático para exponer el servidor web de la DMZ hacia Internet de forma controlada
+Implementar ACLs que simulen un firewall, permitiendo solo el tráfico legítimo
+Validar la configuración mediante pruebas de conectividad, acceso HTTP y verificación de bloqueos
 
-*Later, you will be able to practice creating a free-form DMZ, designing your own topology and access rules. But in this lab, the goal is to first understand the logic and fundamentals by following a controlled model.*
 
-## 🌱 How to start this project?
+Topología de red
 
-[Download the file here](https://github.com/breatheco-de/Building-and-Securing-a-Network-with-a-DMZ/raw/main/assets/DMZ_PROJECT.pka) and open it with Packet Tracer.
+Router central (Router_FW, Cisco ISR 2911) con tres interfaces, cada una conectada a un switch (Cisco 2960) que representa una zona:
 
-Once you have opened the file in Packet Tracer, you will see a floating window with instructions to follow.
+ZonaInterfaz RouterDispositivo finalLAN internaGigabitEthernet0/0PC_InternalDMZGigabitEthernet0/1Web_DMZ (Server-PT)Externa (Internet simulado)GigabitEthernet0/2PC_External
 
-## 📝 Instructions
+Plan de direccionamiento IP
 
-At the start of this lab, **you do not need to create or cable the network from scratch**. A **prebuilt functional topology** is already provided in Packet Tracer so you can focus on what matters most: **security configuration**.
+DispositivoIPMáscaraGatewayZonaRouter_FW (GE0/0)192.168.1.1/24—LANRouter_FW (GE0/1)192.168.2.1/24—DMZRouter_FW (GE0/2)192.168.3.1/24—ExternaPC_Internal192.168.1.10/24192.168.1.1LANWeb_DMZ192.168.2.10/24192.168.2.1DMZPC_External192.168.3.10/24192.168.3.1Externa
 
-### Lab Topology
+Configuración implementada
 
-**Central Router (`Router_FW`): Cisco ISR 2911**
+NAT estático — expone el servidor de la DMZ (192.168.2.10) hacia la red externa a través de la IP pública 192.168.3.1, sin revelar la IP privada real:
 
-- `GigabitEthernet0/0` connected to `SW_Internal` (LAN network)  
-- `GigabitEthernet0/1` connected to `SW_DMZ` (DMZ network)  
-- `GigabitEthernet0/2` connected to `SW_External` (external/internet network)  
+interface GigabitEthernet0/1
+ ip nat inside
+interface GigabitEthernet0/2
+ ip nat outside
+ip nat inside source static 192.168.2.10 192.168.3.1
 
-**Cisco 2960 Switches:**
+ACLs extendidas — tres listas de control de acceso que replican el comportamiento de un firewall entre zonas:
 
-- `SW_Internal` connects to `PC_Internal`  
-- `SW_DMZ` connects to `Server-PT Web_DMZ`  
-- `SW_External` connects to `PC_External`  
+ACLAplicada enRegla principalACL_EXTERNAL_INGE0/2 (entrada externa)Permite TCP hacia 192.168.3.1:80; deniega todo lo demásBLOQUEAR_DMZ_A_LANGE0/1 (entrada DMZ)Permite tráfico establecido DMZ→LAN; bloquea nuevas conexiones DMZ→LANACL_LAN_OUTGE0/0 (salida LAN)Permite tráfico saliente desde la LAN interna
 
-**End Devices:**
+Pruebas de validación
 
-- `PC_Internal` (user in LAN)  
-- `Server-PT Web_DMZ` (web server in the DMZ)  
-- `PC_External` (external user simulating the internet)  
+PruebaResultadoConectividad PC_Internal → Gateway LAN✅ Exitoso (0% pérdida)Conectividad Web_DMZ → Gateway DMZ✅ Exitoso (0% pérdida)Conectividad PC_External → Gateway Externa✅ Exitoso (0% pérdida)Acceso HTTP externo vía NAT (http://192.168.3.1)✅ ExitosoAcceso HTTP interno directo (http://192.168.2.10)✅ ExitosoPing ICMP externo → 192.168.3.1🚫 Bloqueado (ACL_EXTERNAL_IN solo permite TCP/80)Ping DMZ → LAN (Web_DMZ → 192.168.1.10)🚫 Bloqueado (BLOQUEAR_DMZ_A_LAN)
 
-### What do you need to do?
+La prueba más crítica del laboratorio es el bloqueo DMZ→LAN: confirma que, aunque la DMZ esté comprometida, no puede usarse como puente hacia la red interna.
 
-Your task will be to **complete the logical configuration** of this prebuilt network. You must:
+Conclusiones
 
-1. **Assign IP addresses** to all end devices and the router.  
-   This ensures that each zone (LAN, DMZ, External) has basic connectivity.
 
-2. **Configure static NAT** on the router so that the DMZ server can be accessed from outside.  
-   > Using NAT is a key technique to hide private addresses and expose public services in a controlled way.
+Segmentación efectiva: separar la red en tres interfaces (LAN, DMZ, Externa) reduce la superficie de ataque al aislar los servicios públicos de la red interna.
+NAT como exposición controlada: publica el servicio web sin revelar la IP privada real del servidor.
+ACLs como firewall de capa 3/4: permiten políticas granulares de tráfico entre zonas.
+Arquitectura validada: todo el tráfico no autorizado (ICMP externo, DMZ→LAN) fue bloqueado, mientras el servicio legítimo (HTTP vía NAT) funcionó correctamente.
 
-3. **Apply Access Control Lists (ACLs)** to restrict traffic between zones.  
-   > ACLs simulate a firewall, blocking unauthorized access and allowing only what is necessary for each role.
 
-4. **Perform functional validation tests**:
-   - Pings from different points in the network
-   - HTTP access from the external network to the server
-   - Verify that certain accesses are **blocked**, such as attempts to connect from the DMZ to the LAN (INTERNAL_NETWORK)
+Contenido del repositorio
 
-These tests simulate real security situations, where you verify that only legitimate traffic is allowed and malicious or unnecessary traffic is blocked.
+ArchivoDescripciónInforme_DMZ_Raul_Velasquez.pdfInforme técnico completo (15 páginas) con configuración paso a paso y evidenciasDMZ_PROJECT-hecho.pkaArchivo de topología completo en Cisco Packet Tracerassets/Capturas de pantalla y recursos del laboratorio
 
-## 🚛 How to submit this project?
 
-Once you have completed the Packet Tracer instructions, you must save your file and prepare a technical report following the official template provided [report template](https://github.com/breatheco-de/Building-and-Securing-a-Network-with-a-DMZ/blob/main/assets/report_DMZ.md). **Important!** Use the template as a guide to write your report. Submissions without structure or incomplete will not be accepted.
-
-1. Create a public repository in your GitHub account named `dmz-lab` (or similar).
-2. Upload the following files:
-   - Your final Packet Tracer file.
-   - `informe/Informe_DMZ_Laboratorio.md`: the completed report using the template.
-   - `evidencias/`: screenshots of the tests performed.
-3. Add a `README.md` that briefly explains the objective of the lab and the contents of the repository.
-4. **Submit the repository link on the 4Geeks platform.**
-
-<!-- hide -->
-## Contributors
-
-Thanks to these wonderful people ([emoji key](https://github.com/kentcdodds/all-contributors#emoji-key)):
-
-1. [Vanessa Morocho (vanemorocho)](https://github.com/vanemorocho) contribution: (tutorial building) ✅, (documentation) 📖
-  
-2. [Alejandro Sanchez (alesanchezr)](https://github.com/alesanchezr), contribution: (bug reports) 🐛
-
-This and many other exercises are created by students as part of the [Cybersecurity Bootcamp](https://4geeksacademy.com/us/coding-bootcamps/cybersecurity) at 4Geeks Academy by [Alejandro Sánchez](https://twitter.com/alesanchezr) and many other contributors. Discover more about our [Full Stack Developer Course](https://4geeksacademy.com/us/coding-bootcamps/part-time-full-stack-developer) and the [Data Science Bootcamp](https://4geeksacademy.com/us/coding-bootcamps/datascience-machine-learning).
-
-<!-- endhide -->
+Proyecto académico — Programa de Ciberseguridad, 4Geeks Academy
