@@ -1,63 +1,102 @@
-Construyendo y Asegurando una Red con una Zona Desmilitarizada (DMZ)
+# 🛡️ Building and Securing a Network with a DMZ
 
-Laboratorio de Seguridad en Redes · Cisco Packet Tracer · 4Geeks Academy
-Estudiante: Raúl Velásquez · 
+**Network Security Lab · Cisco Packet Tracer · 4Geeks Academy**
+Student: Raúl Velásquez · 
 
-Descripción
+## 📋 Overview
 
-Implementación de una arquitectura de red segmentada con una Zona Desmilitarizada (DMZ) en Cisco Packet Tracer, aplicando principios de ciberseguridad defensiva: aislamiento de servicios críticos, exposición controlada mediante NAT, y control de tráfico entre zonas con Listas de Control de Acceso (ACLs).
+Implementation of a segmented network architecture with a Demilitarized Zone (DMZ) in Cisco Packet Tracer, applying defensive cybersecurity principles: isolating critical services, controlled exposure via NAT, and traffic control between zones with Access Control Lists (ACLs).
 
-Objetivos
+---
 
+## 🎯 Objectives
 
-Aislar servicios críticos en una DMZ separada de la red interna (LAN)
-Configurar NAT estático para exponer el servidor web de la DMZ hacia Internet de forma controlada
-Implementar ACLs que simulen un firewall, permitiendo solo el tráfico legítimo
-Validar la configuración mediante pruebas de conectividad, acceso HTTP y verificación de bloqueos
+- ✅ Isolate critical services in a DMZ, separate from the internal LAN
+- ✅ Configure static NAT to expose the DMZ web server to the Internet in a controlled way
+- ✅ Implement ACLs that simulate a firewall, allowing only legitimate traffic
+- ✅ Validate the configuration through connectivity tests, HTTP access, and blocking verification
 
+---
 
-Topología de red
+## 🗺️ Network Topology
 
-Router central (Router_FW, Cisco ISR 2911) con tres interfaces, cada una conectada a un switch (Cisco 2960) que representa una zona:
+Central router (`Router_FW`, Cisco ISR 2911) with three interfaces, each connected to a switch (Cisco 2960) representing one zone:
 
-ZonaInterfaz RouterDispositivo finalLAN internaGigabitEthernet0/0PC_InternalDMZGigabitEthernet0/1Web_DMZ (Server-PT)Externa (Internet simulado)GigabitEthernet0/2PC_External
+| Zone | Router Interface | End Device |
+|---|---|---|
+| Internal LAN | GigabitEthernet0/0 | PC_Internal |
+| DMZ | GigabitEthernet0/1 | Web_DMZ (Server-PT) |
+| External (simulated Internet) | GigabitEthernet0/2 | PC_External |
 
-Plan de direccionamiento IP
+---
 
-DispositivoIPMáscaraGatewayZonaRouter_FW (GE0/0)192.168.1.1/24—LANRouter_FW (GE0/1)192.168.2.1/24—DMZRouter_FW (GE0/2)192.168.3.1/24—ExternaPC_Internal192.168.1.10/24192.168.1.1LANWeb_DMZ192.168.2.10/24192.168.2.1DMZPC_External192.168.3.10/24192.168.3.1Externa
+## 🔢 IP Addressing Plan
 
-Configuración implementada
+| Device | IP | Mask | Gateway | Zone |
+|---|---|---|---|---|
+| Router_FW (GE0/0) | 192.168.1.1 | /24 | — | LAN |
+| Router_FW (GE0/1) | 192.168.2.1 | /24 | — | DMZ |
+| Router_FW (GE0/2) | 192.168.3.1 | /24 | — | External |
+| PC_Internal | 192.168.1.10 | /24 | 192.168.1.1 | LAN |
+| Web_DMZ | 192.168.2.10 | /24 | 192.168.2.1 | DMZ |
+| PC_External | 192.168.3.10 | /24 | 192.168.3.1 | External |
 
-NAT estático — expone el servidor de la DMZ (192.168.2.10) hacia la red externa a través de la IP pública 192.168.3.1, sin revelar la IP privada real:
+---
 
+## ⚙️ Configuration Implemented
+
+**Static NAT** — exposes the DMZ server (192.168.2.10) to the external network through the public IP 192.168.3.1, without revealing the real private IP:
+
+```
 interface GigabitEthernet0/1
  ip nat inside
 interface GigabitEthernet0/2
  ip nat outside
 ip nat inside source static 192.168.2.10 192.168.3.1
+```
 
-ACLs extendidas — tres listas de control de acceso que replican el comportamiento de un firewall entre zonas:
+**Extended ACLs** — three access control lists that replicate firewall behavior between zones:
 
-ACLAplicada enRegla principalACL_EXTERNAL_INGE0/2 (entrada externa)Permite TCP hacia 192.168.3.1:80; deniega todo lo demásBLOQUEAR_DMZ_A_LANGE0/1 (entrada DMZ)Permite tráfico establecido DMZ→LAN; bloquea nuevas conexiones DMZ→LANACL_LAN_OUTGE0/0 (salida LAN)Permite tráfico saliente desde la LAN interna
+| ACL | Applied On | Main Rule |
+|---|---|---|
+| `ACL_EXTERNAL_IN` | GE0/2 (external inbound) | Permits TCP to 192.168.3.1:80; denies everything else |
+| `BLOQUEAR_DMZ_A_LAN` | GE0/1 (DMZ inbound) | Permits established DMZ→LAN traffic; blocks new DMZ→LAN connections |
+| `ACL_LAN_OUT` | GE0/0 (LAN outbound) | Permits outbound traffic from the internal LAN |
 
-Pruebas de validación
+---
 
-PruebaResultadoConectividad PC_Internal → Gateway LAN✅ Exitoso (0% pérdida)Conectividad Web_DMZ → Gateway DMZ✅ Exitoso (0% pérdida)Conectividad PC_External → Gateway Externa✅ Exitoso (0% pérdida)Acceso HTTP externo vía NAT (http://192.168.3.1)✅ ExitosoAcceso HTTP interno directo (http://192.168.2.10)✅ ExitosoPing ICMP externo → 192.168.3.1🚫 Bloqueado (ACL_EXTERNAL_IN solo permite TCP/80)Ping DMZ → LAN (Web_DMZ → 192.168.1.10)🚫 Bloqueado (BLOQUEAR_DMZ_A_LAN)
+## 🧪 Validation Tests
 
-La prueba más crítica del laboratorio es el bloqueo DMZ→LAN: confirma que, aunque la DMZ esté comprometida, no puede usarse como puente hacia la red interna.
+| Test | Result |
+|---|---|
+| Connectivity PC_Internal → LAN Gateway | ✅ Success (0% loss) |
+| Connectivity Web_DMZ → DMZ Gateway | ✅ Success (0% loss) |
+| Connectivity PC_External → External Gateway | ✅ Success (0% loss) |
+| External HTTP access via NAT (`http://192.168.3.1`) | ✅ Success |
+| Direct internal HTTP access (`http://192.168.2.10`) | ✅ Success |
+| External ICMP ping → 192.168.3.1 | 🚫 Blocked (ACL_EXTERNAL_IN only allows TCP/80) |
+| DMZ → LAN ping (Web_DMZ → 192.168.1.10) | 🚫 Blocked (BLOQUEAR_DMZ_A_LAN) |
 
-Conclusiones
+The most critical test is the DMZ→LAN block: it confirms that even if the DMZ were compromised, it couldn't be used as a bridge into the internal network.
 
+---
 
-Segmentación efectiva: separar la red en tres interfaces (LAN, DMZ, Externa) reduce la superficie de ataque al aislar los servicios públicos de la red interna.
-NAT como exposición controlada: publica el servicio web sin revelar la IP privada real del servidor.
-ACLs como firewall de capa 3/4: permiten políticas granulares de tráfico entre zonas.
-Arquitectura validada: todo el tráfico no autorizado (ICMP externo, DMZ→LAN) fue bloqueado, mientras el servicio legítimo (HTTP vía NAT) funcionó correctamente.
+## ✅ Conclusions
 
+- **Effective segmentation:** splitting the network into three interfaces (LAN, DMZ, External) reduces the attack surface by isolating public-facing services from the internal network.
+- **NAT for controlled exposure:** publishes the web service without revealing the server's real private IP.
+- **ACLs as a Layer 3/4 firewall:** enable granular traffic policies between zones.
+- **Validated architecture:** all unauthorized traffic (external ICMP, DMZ→LAN) was blocked, while the legitimate service (HTTP via NAT) worked correctly.
 
-Contenido del repositorio
+---
 
-ArchivoDescripciónInforme_DMZ_Raul_Velasquez.pdfInforme técnico completo (15 páginas) con configuración paso a paso y evidenciasDMZ_PROJECT-hecho.pkaArchivo de topología completo en Cisco Packet Tracerassets/Capturas de pantalla y recursos del laboratorio
+## 📁 Repository Contents
 
+| File | Description |
+|---|---|
+| `Informe_DMZ_Raul_Velasquez.pdf` | 📄 Full technical report (15 pages) with step-by-step configuration and evidence |
+| `DMZ_PROJECT-hecho.pka` | 🖧 Complete network topology file in Cisco Packet Tracer |
+| `assets/` | 📸 Screenshots and lab resources |
 
-Proyecto académico — Programa de Ciberseguridad, 4Geeks Academy
+---
+Academic project — Cybersecurity Program, 4Geeks Academy
